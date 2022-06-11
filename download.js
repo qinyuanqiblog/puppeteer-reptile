@@ -39,7 +39,7 @@ function download({
    // 读取错误会触发的事件
    readSteam.on('error', (err) => {
     log.error('获取远端数据完毕，发生了错误,错误信息==>', err)
-    reject(err)
+    reject(err, url)
    });
 
    // 调用nodejs写入文件方法
@@ -47,13 +47,13 @@ function download({
    // 写入完成事件
    writeFile.on("finish", () => {
     writeFile.close();
-    log.success("恭喜大哥，本地数据写入完成");
-    resolve(true)
+    log.success("恭喜主人，本地数据写入完成");
+    resolve(url)
    });
    // 写入错误触发的事件
    writeFile.on("error", (err) => {
     log.error("不好意思，写入本地文件发生异常，错误信息==>", err);
-    reject(err)
+    reject(err, url)
    });
   });
  })

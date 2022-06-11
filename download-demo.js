@@ -35,10 +35,10 @@ axiosRequest.get('https://media.w3.org/2010/05/sintel/trailer.mp4', {
   // 写入完成事件
   writeFile.on("finish", () => {
         writeFile.close();
-        console.log("恭喜大哥，本地数据写入完成");
+        console.log("恭喜主人，本地数据写入完成");
     });
   // 写入错误触发的事件
   writeFile.on("error", (err) => {
-      console.log("不好意思，写入本地文件发生异常，错误信息==>", err);
+    console.log("报告主人，本地数据写入发生异常，错误信息==>", err);
   });
 });

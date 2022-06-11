@@ -23,7 +23,7 @@ module.exports = class Reptile {
   // 页面等待时间，需要等页面加载完毕，才能获取元素，网络不好的情况，就调长一点，单位s
   // 目前的设计是所有的等待时间公用一个变量
   this.waiteTime = waiteTime;
-  // 目前的设计是所有的等待时间公用一个变量
+  // 支持从第几集开始爬，从1开始，按照正常用户的操作
   this.startIndex = startIndex;
   // excel文件名
   this.excelFileName = excelFileName;
@@ -35,7 +35,10 @@ module.exports = class Reptile {
   this.uploadFailArray = []
   // puppeteer browser实例
   this.browser = null
+  // 准备下载的资源
   this.downloadArray = []
+  // 当然任务消耗了多少时长
+  this.totalTime = 0
 
   this.arrayUserAgent = ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.3']
 
@@ -76,6 +79,7 @@ module.exports = class Reptile {
   await page.goto(this.reptileUrl);
   const waiteTime = this.waiteTime * 1000
   log.info(`休息${this.waiteTime}s, 等待页面加载完毕，才能干活~`)
+  this.totalTime += this.waiteTime
   await page.waitForTimeout(waiteTime)
    .then(() => log.info(`${this.waiteTime}s过去了,继续干活~`));
   log.info(`开始获取播放列表`)
@@ -100,18 +104,19 @@ module.exports = class Reptile {
   if (this.startIndex) {
     urlList.splice(0, this.startIndex -1)
   }
-  this.downloadArray = urlList
+  // 列表名称里面有国语和备用的就过滤掉，不下载了
+  this.downloadArray = urlList.filter(v => v.name !== '备用' && v.name !== '国语')
+  // console.log('downloadArray', this.downloadArray)
   this.downloadTask()
  }
  async downloadTask() {
   const waiteTime = this.waiteTime * 1000
-   const downloadArray = this.downloadArray
-   if (!downloadArray.length){
-    // 关闭浏览器实例
-    log.info('无数据或者是下载完毕，关闭浏览器实例')
-    await this.browser.close();
+  const downloadArray = this.downloadArray
+  // 没有数据了，收摊了
+  if(!this.finally()){
     return false
-   }
+  }
+    
    const current = downloadArray.shift();
    const page = await this.browser.newPage();
    // 随机获取一个userAgent
@@ -121,6 +126,7 @@ module.exports = class Reptile {
    await page.goto(current.url);
    log.info(`休息${this.waiteTime}s, 等待页面加载完毕，才能干活~`)
    await page.waitForTimeout(waiteTime)
+   this.totalTime += this.waiteTime
    // 页面里面的一些重要信息
    const pageInfo = await page.evaluate(async () => {
     // await window.MacPlayer;
@@ -144,6 +150,7 @@ module.exports = class Reptile {
    await newPage.goto(remoteUrl);
    log.info(`等待${this.waiteTime}s，让浏览器加载完毕之后，再做后续操作`);
    await newPage.waitForTimeout(waiteTime)
+   this.totalTime += this.waiteTime
    // 获取目标资源的地址
    const src = await newPage.evaluate('document.querySelector("#lelevideo").getAttribute("src")')
    log.success('成功获取到视频源地址==>', src)
@@ -153,13 +160,14 @@ module.exports = class Reptile {
    download({
     url: src,
     fileName: `${this.saveDir}${current.name}.${suffix}`
-   }).then(()=>{
-    if (!downloadArray.length){
-      // 关闭浏览器实例
-      log.info('无数据或者是下载完毕，关闭浏览器实例')
-      this.browser.close();
+   }).then((url)=>{
+    // 记录下载成功数量
+    this.uploadSuccessArray.push(url)
+    // 没有数据了，收摊了
+    if(!this.finally()){
       return false
-     }
+    }
+    
     // 一开始我是2秒后就开始爬，后来发现这个网站直接把我的ip给封了，看来还是搞时间长一点，😄😄😄,
     //  如果你的ip也被封掉了，就重启下路由器吧， 哈哈
     // 所以就搞了个随机算法，以等待时间乘以一个随机数 10-40 以内，如果不行就再把随机的值变大一点
@@ -167,6 +175,26 @@ module.exports = class Reptile {
       this.downloadTask()
     })
    })
+   .catch((err, url)=>{
+    // 记录下载失败数量
+    this.uploadFailArray.push(url)
+   })
+  }
+  /**
+   *  关闭浏览器进程，显示时长等信息
+   * @returns {boolean}  false
+   */
+  finally(){
+    if (!this.downloadArray.length){
+      const time = commonUtils.secondToDate(this.totalTime)
+      // 关闭浏览器实例
+      log.info(`下载完毕，关闭浏览器实例,总共消耗时间： ${time} `)
+      log.info(`下载成功： ${this.uploadSuccessArray.length} 个`)
+      log.error(`下载失败：${this.uploadFailArray.length} 个`)
+      this.browser.close();
+      return false
+    }
+    return true
   }
   /**
    * 休息一会，再继续爬
@@ -174,6 +202,7 @@ module.exports = class Reptile {
   sleep() {
     const promise = new Promise((resolve, reject)=> {
       const sleepTimeout = commonUtils.getRandomNumber(20, 60)
+      this.totalTime += sleepTimeout
       let copyTimeout = sleepTimeout
       log.error(`爬太多了，有点累了，休息${sleepTimeout}秒，后再继续`)
       let logTimer = null

@@ -2,7 +2,10 @@ const Reptile = require('./robot')
 
 //调用方式1：www.6dm.cc 网站调用入口
 new Reptile({
-  reptileUrl: 'https://www.6dm.cc/play/3376-1-1.html',
+  // 这种的也可以
+  // reptileUrl: 'https://www.6dm.cc/play/3376-1-1.html',
+  // 反正可以去到列表的就可以下载哦
+  reptileUrl: 'https://www.6dm.cc/video/3376.html',
   // saveDir: 'E:/四月是你的谎言/',
   // 支持从第几集开始爬
   // startIndex: 20,

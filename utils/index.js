@@ -6,6 +6,17 @@
  function getRandomNumber(start, end) {
   return Math.floor(Math.random() * (end - start) + start);
  }
+/**
+ * 秒转化成 时分秒
+ * @param {number} result 总秒数
+ * @return {string}       转化好后的时分秒
+ */
+function secondToDate(result) {
+  var h = Math.floor(result / 3600);
+  var m = Math.floor((result / 60 % 60));
+  var s = Math.floor((result % 60));
+  return result = h + "小时" + m + "分钟" + s + "秒";
+}
  
  /**
   * 把一个数组变成多个数组
@@ -55,4 +66,5 @@
   uniqueElementsBy,
   difference,
   pullBy,
+  secondToDate,
  }
